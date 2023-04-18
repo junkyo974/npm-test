@@ -41,19 +41,75 @@ const goods = [
     res.status(200).json({goods})
   });
 
-  router.get("/goods/:goodsId", (req, res)=>{
-    const { goodsId } = req.params;
-    
-    let result = null;
-    for(const goods of goods){
-        if(Number(goodsId) === goods.goodsId){
-            result = good;
-        }
-    }
-    // = 동일한 코드
-    // const [result] goods.filter((good) =>Number(goodsId) === good.goodsId)
+router.get("/goods", (req, res) => {
+  res.json({ goods: goods});
+});
 
-    res.status(200).json({detail: result});
-  })
+router.get("/goods/:goodsId", (req, res)=> {
+  const {goodsId} = req.params;
+  const [detail] = goods.filter((goods) =>goods.goodsId === Number(goodsId));
+  res.json({ detail });
+});
+
+const Cart = require("../schemas/cart.js");
+router.post("/goods/:goodsId/cart", async(req,res) => {
+  const {goodsId} = req.params;
+  const {quantity} = req.body;
+
+  const existsCart = await Cart.find({goodsId});
+  if (existsCart.length){
+    return res.status(400).json({
+      success: false,
+      errorMessage:"이미 장바구니에 존재하는 상품입니다.",
+    })
+  }
+
+  await Cart.create({goodsId, quantity});
+
+  res.json({result: "성공"});
+})
+
+router.put("/goods/:goodsId/cart", async(req,res) => {
+  const {goodsId} = req.params;
+  const {quantity} = req.body;
+
+  const existsCart = await Cart.find({goodsId});
+  if(existsCart.length) {
+    await Cart.updateOne(
+      {goodsId: goodsId},
+      {$set: {quantity:quantity}}
+      )
+  }
+  res.status(200).json({success:true});
+})
+
+router.delete("/goods/:goodsId/cart", async(req, res) => {
+  const {goodsId} = req.params;
+
+  const existsCart = await Cart.find({goodsId});
+  if(existsCart.length){
+    await Cart.deleteOne({goodsId});
+  }
+
+  res.json({result:"success"});
+})
+
+const Goods = require("../schemas/goods.js");
+router.post("/goods/", async (req, res) => {
+  const {goodsId, name, thumbnailUrl, category, price} = req.body;
+  
+  const goods = await Goods.find({goodsId});
+
+if( goods.length){
+  return res.status(400).json({
+    success:false,
+    errorMessage:"이미 존재하는 GoodsId입니다."
+  });
+}
+
+const createdGoods = await Goods.create({goodsId, name, thumbnailUrl, category, price});
+
+res.json({goods: createdGoods});
+})
 
 module.exports = router;
